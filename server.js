@@ -5,15 +5,17 @@ const helmet = require('helmet');
 const http = require('http')
 const connectDB = require('./src/config/db');
 const startSocket = require('./src/sockets/chatSocket');
-
+const cookieParser = require('cookie-parser');
+const Redis = require('ioredis')
 const authRoutes = require('./src/routes/authRoute')
 const serviceRoutes = require('./src/routes/serviceRoute');
 const projectRoutes = require('./src/routes/projectRoute');
+const applicationRoutes = require('./src/routes/applicationRoute');
 
 
 const app = express();
 
-const redisClient = Redis(process.env.REDIS_URL)
+const redisClient = new Redis(process.env.REDIS_URL)
 
 redisClient.on('connect', ()=>{
   console.log('Connected to Redis');
@@ -46,7 +48,20 @@ app.use('/api/projects', (req, res, next)=>{
   req.redisClient = redisClient;
   next();
 }, projectRoutes);
+app.use('/api/apply', (req, res, next)=>{
+  req.redisClient = redisClient;
+  next();
+}, applicationRoutes);
 
+// Error handling middleware
+app.use((err, req, res, next) => {
+  console.error(err.stack);
+  res.status(500).json({
+    success: false,
+    message: 'Server error',
+    error: err.message,
+  });
+});
 // Create Server
 const server = http.createServer(app);
 

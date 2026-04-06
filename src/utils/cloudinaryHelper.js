@@ -5,9 +5,9 @@ const storage = multer.memoryStorage();
 const upload = multer({
   storage,
   limits: {
-    fileSize: 10 * 1024 * 1024, // 5MB limit
+    fileSize: 10 * 1024 * 1024, // 10MB limit
   }
-}).single('image');
+}).single('file');
 
 const uploadToCloudinary = async (file) => {
   try {
@@ -16,14 +16,14 @@ const uploadToCloudinary = async (file) => {
       return null;
     }
     return new Promise((resolve) => {
-      cloudinary.uploader.upload_stream((error, uploadResult) => {
-        if (error) {
-          console.error('Cloudinary upload error:', error);
-          return resolve(null);
-        }
-        
-        console.log(`Cloudinary upload success - ${uploadResult.public_id} ${uploadResult.secure_url}`);
-        return resolve(uploadResult);
+      cloudinary.uploader.upload_stream({ resource_type: 'auto' }, (error, uploadResult) => {
+      if (error) {
+        console.error('Cloudinary upload error:', error);
+        return resolve(null);
+      }
+      
+      console.log(`Cloudinary upload success - ${uploadResult.public_id} ${uploadResult.secure_url}`);
+      return resolve(uploadResult);
       }).end(file.buffer);
     });
   } catch (error) {

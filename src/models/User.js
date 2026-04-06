@@ -51,6 +51,19 @@ const userSchema = new mongoose.Schema(
     resetPasswordToken: String,
     resetPasswordExpire: Date,
     refreshToken: String,
+    projects: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Project',
+      }
+    ],
+    applications: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Application',
+      }
+    ]
+
   },
   { timestamps: true }
 );

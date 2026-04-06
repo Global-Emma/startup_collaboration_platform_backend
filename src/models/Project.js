@@ -49,7 +49,11 @@ const projectSchema = new mongoose.Schema(
       type: String,
       default: 'https://placeholderimage.co/600x400/ccc/22c55e?text=Project+Image',
     },
-
+    status: {
+      type: String,
+      enum: ['active', 'inactive'],
+      default: 'active',
+    },
     user: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
