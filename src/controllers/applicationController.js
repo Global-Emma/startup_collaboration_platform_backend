@@ -1,5 +1,6 @@
 const Application = require('../models/Application');
 const Project = require('../models/Project');
+const User = require('../models/User');
 const { uploadToCloudinary } = require('../utils/cloudinaryHelper');
 
 
@@ -58,6 +59,16 @@ const applyToProject = async (req, res) => {
         message: 'Error submitting application',
       });
     }
+
+    const user = await User.findById(req.user._id);
+
+    // Add application to user's applied applications
+    user.applications.push(application._id);
+    await user.save();
+
+    // Add application to project's applications
+    existingProject.applications.push(application._id);
+    await existingProject.save();
 
     return res.status(201).json({
       success: true,

@@ -90,6 +90,9 @@ const createService = async (req, res) => {
       });
     }
 
+    await invalidateCache(req.redisClient, 'services:all');
+    await invalidateCache(req.redisClient, `service:${service._id}`);
+
     return res.status(201).json({
       success: true,
       message: 'Service created successfully',
@@ -109,7 +112,22 @@ const createService = async (req, res) => {
 // GET ALL SERVICES
 const getServices = async (req, res) => {
   try {
+    const cachedKey = 'services:all';
+    const cachedServices = req.redisClient ? await req.redisClient.get(cachedKey) : null;
+
+    if (cachedServices) {
+      console.log('Services found in cache');
+      return res.status(200).json({
+        success: true,
+        data: JSON.parse(cachedServices),
+      });
+    }
+
     const services = await Service.find().sort({ createdAt: -1 });
+
+    if (req.redisClient) {
+      await req.redisClient.set(cachedKey, JSON.stringify(services), 'EX', 3600);
+    }
 
     return res.status(200).json({
       success: true,
@@ -130,6 +148,17 @@ const getServices = async (req, res) => {
 // GET SINGLE SERVICE
 const getService = async (req, res) => {
   try {
+    const cachedKey = `service:${req.params.id}`;
+    const cachedService = req.redisClient ? await req.redisClient.get(cachedKey) : null;
+
+    if (cachedService) {
+      console.log('Service found in cache');
+      return res.status(200).json({
+        success: true,
+        data: JSON.parse(cachedService),
+      });
+    }
+
     const service = await Service.findById(req.params.id)
       .populate({
       path: 'projects',
@@ -152,6 +181,10 @@ const getService = async (req, res) => {
         success: false,
         message: 'Service not found',
       });
+    }
+
+    if (req.redisClient) {
+      await req.redisClient.set(cachedKey, JSON.stringify(service), 'EX', 3600);
     }
 
     return res.status(200).json({
@@ -188,6 +221,10 @@ const updateService = async (req, res) => {
 
     const updatedService = await service.save();
 
+    await invalidateCache(req.redisClient, `service:${service._id}`);
+
+    await invalidateCache(req.redisClient, 'services:all');
+
     return res.status(200).json({
       success: true,
       message: 'Service updated successfully',
@@ -217,6 +254,10 @@ const deleteService = async (req, res) => {
     }
 
     await service.deleteOne();
+
+    await invalidateCache(req.redisClient, `service:${service._id}`);
+
+    await invalidateCache(req.redisClient, 'services:all');
 
     return res.status(200).json({
       success: true,

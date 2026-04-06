@@ -119,6 +119,8 @@ const loginUser = async (req, res) => {
     user.refreshToken = refreshToken;
     await user.save();
 
+    await invalidateUserCache(req.redisClient, `user:${user._id}`);
+
     return res.status(200).json({
       success: true,
       message: 'Login successful',
@@ -139,13 +141,34 @@ const loginUser = async (req, res) => {
 // =======================
 const getUserProfile = async (req, res) => {
   try {
-    const user = await User.findById(req.user._id).select('-password');
+    const cachedKey = `user:${req.user._id}`;
+    const cachedUser = req.redisClient ? await req.redisClient.get(cachedKey) : null;
+
+    if (cachedUser) {
+      console.log('User found in cache');
+      return res.status(200).json({
+        success: true,
+        data: JSON.parse(cachedUser),
+      });
+    }
+
+    const user = await User.findById(req.user._id).select('-password -refreshToken').populate('projects').populate({
+      path: 'applications',
+      populate: {
+        path: 'project',
+        select: 'title'
+      }
+    });
 
     if (!user) {
       return res.status(404).json({
         success: false,
         message: 'User not found',
       });
+    }
+
+    if (req.redisClient) {
+      await req.redisClient.set(cachedKey, JSON.stringify(user), 'EX', 3600);
     }
 
     return res.status(200).json({
@@ -179,6 +202,8 @@ const changePassword = async (req, res) => {
     }
 
     const user = await User.findById(req.user._id);
+
+    await invalidateUserCache(req.redisClient, `user:${user._id}`);
 
     const isMatch = await bcrypt.compare(currentPassword, user.password);
 

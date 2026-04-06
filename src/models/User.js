@@ -21,10 +21,11 @@ const userSchema = new mongoose.Schema(
       type: String,
       required: true,
       unique: true,
+      lowercase: true,
+      trim: true,
     },
     phone: {
-      type: Number,
-      required: true,
+      type: String,
     },
     password: {
       type: String,
@@ -50,17 +51,33 @@ const userSchema = new mongoose.Schema(
     },
     resetPasswordToken: String,
     resetPasswordExpire: Date,
-    refreshToken: String,
+    refreshToken: {
+      type: String
+    },
     projects: [
       {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'Project',
+        project: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: 'Project',
+        },
+        status: {
+          type: String,
+          enum: ['active', 'completed', 'cancelled'],
+          default: 'active',
+        }
       }
     ],
+
     applications: [
       {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: 'Application',
+      }
+    ],
+    savedProjects: [
+      {
         type: mongoose.Schema.Types.ObjectId,
-        ref: 'Application',
+        ref: 'Project'
       }
     ]
 

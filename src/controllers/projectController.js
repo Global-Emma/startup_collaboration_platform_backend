@@ -68,6 +68,14 @@ const createProject = async (req, res) => {
       });
     }
 
+    await invalidateCache(req.redisClient, `project:${project._id}`);
+
+    await invalidateCache(req.redisClient, 'projects:all');
+
+    await invalidateCache(req.redisClient, `service:${existingService._id}`);
+
+    await invalidateCache(req.redisClient, 'services:all');
+
     return res.status(201).json({
       success: true,
       message: 'Project created successfully',
@@ -87,10 +95,26 @@ const createProject = async (req, res) => {
 // GET ALL PROJECTS
 const getProjects = async (req, res) => {
   try {
+    const cachedKey = 'projects:all';
+    const cachedProjects = req.redisClient ? await req.redisClient.get(cachedKey) : null;
+
+    if (cachedProjects) {
+      console.log('Projects found in cache');
+      return res.status(200).json({
+        success: true,
+        count: JSON.parse(cachedProjects).length,
+        data: JSON.parse(cachedProjects),
+      });
+    }
+
     const projects = await Project.find()
       .populate('user')
       .populate('service')
       .sort({ createdAt: -1 });
+
+    if (req.redisClient) {
+      await req.redisClient.set(cachedKey, JSON.stringify(projects), 'EX', 3600);
+    }
 
     return res.status(200).json({
       success: true,
@@ -111,6 +135,17 @@ const getProjects = async (req, res) => {
 // GET SINGLE PROJECT
 const getProject = async (req, res) => {
   try {
+    cachedKey = `project:${req.params.id}`;
+    const cachedProject = req.redisClient ? await req.redisClient.get(cachedKey) : null;
+
+    if (cachedProject) {
+      console.log('Project found in cache');
+      return res.status(200).json({
+        success: true,
+        data: JSON.parse(cachedProject),
+      });
+    }
+
     const project = await Project.findById(req.params.id)
       .populate({
         path: 'user',
@@ -122,6 +157,10 @@ const getProject = async (req, res) => {
         success: false,
         message: 'Project not found',
       });
+    }
+
+    if (req.redisClient) {
+      await req.redisClient.set(cachedKey, JSON.stringify(project), 'EX', 3600);
     }
 
     return res.status(200).json({
@@ -183,6 +222,11 @@ const updateProject = async (req, res) => {
 
     const updatedProject = await project.save();
 
+    await invalidateCache(req.redisClient, `project:${project._id}`);
+
+    await invalidateCache(req.redisClient, 'projects:all');
+
+
     return res.status(200).json({
       success: true,
       message: 'Project updated successfully',
@@ -220,6 +264,11 @@ const deleteProject = async (req, res) => {
     }
 
     await project.deleteOne();
+
+    await invalidateCache(req.redisClient, `project:${project._id}`);
+
+    await invalidateCache(req.redisClient, 'projects:all');
+
 
     return res.status(200).json({
       success: true,

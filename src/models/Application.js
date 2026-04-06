@@ -31,6 +31,9 @@ const applicationSchema = new mongoose.Schema({
   cv: {
     type: String, // URL to the uploaded CV
   },
+  message: {
+    type: String,
+  },
 
 }, { timestamps: true });
 
