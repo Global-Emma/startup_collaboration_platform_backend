@@ -67,4 +67,15 @@ const adminOnly = (req, res, next) => {
   next();
 }
 
-module.exports = { protect, adminOnly };
+const employerOnly = (req, res, next) => {
+  if (req.user.role !== 'employer') {
+    return res.status(403).json({
+      success: false,
+      message: 'Not authorized',
+    });
+  }
+
+  next();
+}
+
+module.exports = { protect, adminOnly, employerOnly };

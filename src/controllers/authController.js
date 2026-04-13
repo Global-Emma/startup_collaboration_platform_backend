@@ -3,6 +3,7 @@ const { generateAccessToken, generateRefreshToken } = require('../utils/tokenGen
 const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
 const jwt = require('jsonwebtoken');
+const { invalidateCache } = require('../utils/validation');
 
 // REGISTER USER
 const registerUser = async (req, res) => {
@@ -67,6 +68,8 @@ const registerUser = async (req, res) => {
       });
     }
 
+    await invalidateCache(req.redisClient, `user:${newUser._id}`);
+
     return res.status(201).json({
       success: true,
       message: 'User registered successfully',
@@ -119,7 +122,7 @@ const loginUser = async (req, res) => {
     user.refreshToken = refreshToken;
     await user.save();
 
-    await invalidateUserCache(req.redisClient, `user:${user._id}`);
+    await invalidateCache(req.redisClient, `user:${user._id}`);
 
     return res.status(200).json({
       success: true,
@@ -152,13 +155,28 @@ const getUserProfile = async (req, res) => {
       });
     }
 
-    const user = await User.findById(req.user._id).select('-password -refreshToken').populate('projects').populate({
+    const user = await User.findById(req.user._id).select('-password -refreshToken').populate({
+      path: 'projects.project',
+      populate: {
+        path: 'user',
+        select: '-password -refreshToken'
+      }
+    }).populate({
+      path: 'projects.project',
+      populate: {
+        path: 'service',
+        select: 'name'
+      }
+    }).populate({
       path: 'applications',
       populate: {
         path: 'project',
-        select: 'title'
+        populate: {
+          path: 'user',
+          select: '-password -refreshToken'
+        }
       }
-    });
+    }).exec();
 
     if (!user) {
       return res.status(404).json({
@@ -387,6 +405,52 @@ const refreshToken = async (req, res) => {
   }
 };
 
+const userLogout = async(req, res)=> {
+  try {
+    const token = req.cookies.refreshToken;
+
+    if (!token) {
+      return res.status(400).json({
+        success: false,
+        message: 'Refresh token required',
+      });
+    }
+
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+
+    if (!decoded) {
+      return res.status(401).json({
+        success: false,
+        message: 'Invalid or expired refresh token',
+      });
+    }
+
+      const user = await User.findById(decoded.userId);
+
+    if (!user || user.refreshToken !== token) {
+      return res.status(401).json({
+        success: false,
+        message: 'Invalid or expired refresh token',
+      });
+    }
+
+    user.refreshToken = ''
+    await user.save()
+    res.status(200).json({
+      success: true,
+      message: 'User Logged Out Successfully'
+    })
+  } catch (error) {
+    console.log('Error in userLogout:', error);
+
+    return res.status(500).json({
+      success: false,
+      message: 'Server error Occured during User Logout',
+      error: error.message,
+    });
+  }
+}
+
 
 module.exports = {
   registerUser,
@@ -395,5 +459,6 @@ module.exports = {
   changePassword,
   forgotPassword,
   resetPassword,
-  refreshToken
+  refreshToken,
+  userLogout
 };

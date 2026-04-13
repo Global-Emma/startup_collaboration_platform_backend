@@ -12,8 +12,6 @@ const {
 const { protect } = require('../middlewares/authMiddleware');
 const { upload } = require('../utils/cloudinaryHelper');
 
-
-
 // Apply
 router.post('/:id', protect, upload, applyToProject);
 
@@ -22,8 +20,8 @@ router.get('/me', protect, getUserApplications);
 router.get('/project/:projectId', protect, getProjectApplications);
 
 // Actions
-router.put('/:id/accept', protect, acceptApplication);
-router.put('/:id/reject', protect, rejectApplication);
+router.put('/accept/:id', protect, acceptApplication);
+router.put('/reject/:id', protect, rejectApplication);
 
 // Delete
 router.delete('/:id', protect, deleteApplication);

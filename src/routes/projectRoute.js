@@ -9,13 +9,13 @@ const {
   deleteProject,
 } = require('../controllers/projectController');
 
-const { protect } = require('../middlewares/authMiddleware');
+const { protect, employerOnly } = require('../middlewares/authMiddleware');
 const { upload } = require('../utils/cloudinaryHelper');
 
 // Protected
-router.post('/', protect, upload, createProject);
-router.put('/:id', protect, updateProject);
-router.delete('/:id', protect, deleteProject);
+router.post('/', protect, employerOnly, upload, createProject);
+router.put('/:id', protect, employerOnly, updateProject);
+router.delete('/:id', protect, employerOnly, deleteProject);
 
 // Public
 router.get('/', getProjects);

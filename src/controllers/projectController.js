@@ -1,6 +1,7 @@
 const Project = require('../models/Project');
 const Service = require('../models/Service');
 const { uploadToCloudinary } = require('../utils/cloudinaryHelper');
+const { invalidateCache } = require('../utils/validation');
 
 // CREATE PROJECT
 const createProject = async (req, res) => {
@@ -110,7 +111,15 @@ const getProjects = async (req, res) => {
     const projects = await Project.find()
       .populate('user')
       .populate('service')
+      .populate({
+        path:'applications',
+        populate: {
+          path: 'applicant',
+          select: '-password -refreshToken'
+        },
+      })
       .sort({ createdAt: -1 });
+      
 
     if (req.redisClient) {
       await req.redisClient.set(cachedKey, JSON.stringify(projects), 'EX', 3600);

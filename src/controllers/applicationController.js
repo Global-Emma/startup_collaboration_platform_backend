@@ -2,6 +2,7 @@ const Application = require('../models/Application');
 const Project = require('../models/Project');
 const User = require('../models/User');
 const { uploadToCloudinary } = require('../utils/cloudinaryHelper');
+const { invalidateCache } = require('../utils/validation');
 
 
 // =======================
@@ -69,6 +70,12 @@ const applyToProject = async (req, res) => {
     // Add application to project's applications
     existingProject.applications.push(application._id);
     await existingProject.save();
+
+    await invalidateCache(req.redisClient, `project:${project._id}`);
+
+    await invalidateCache(req.redisClient, 'projects:all');
+
+    await invalidateCache(req.redisClient, `user:${user._id}`);
 
     return res.status(201).json({
       success: true,
@@ -168,10 +175,28 @@ const acceptApplication = async (req, res) => {
     application.status = 'accepted';
     await application.save();
 
+    const applicant = await User.findById(application.applicant)
+
+    if (!applicant) {
+      return res.status(404).json({
+        success: false,
+        message: 'Applicant not Found',
+      });
+    }
+
+    // Add the Project to the users accepted projects.
+    applicant.projects.push({
+      project: application.project,
+      status: 'active'
+    })
+    await applicant.save()
+
+    await invalidateCache(req.redisClient, `user:${applicant._id}`);
+
+
     return res.status(200).json({
       success: true,
       message: 'Application accepted successfully',
-      data: application,
     });
   } catch (error) {
     console.log('Error in acceptApplication:', error);
@@ -255,6 +280,10 @@ const deleteApplication = async (req, res) => {
     }
 
     await application.deleteOne();
+
+    const applicant = await User.findById(application.applicant)
+
+     await invalidateCache(req.redisClient, `user:${applicant._id}`);
 
     return res.status(200).json({
       success: true,
