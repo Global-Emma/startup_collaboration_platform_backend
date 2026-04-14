@@ -176,6 +176,18 @@ const getUserProfile = async (req, res) => {
           select: '-password -refreshToken'
         }
       }
+    }).populate({
+      path: 'savedProjects',
+      populate: {
+        path: 'user',
+        select: '-password -refreshToken'
+      }
+    }).populate({
+      path: 'savedProjects',
+      populate: {
+        path: 'service',
+        select: 'name'
+      }
     }).exec();
 
     if (!user) {
@@ -192,6 +204,80 @@ const getUserProfile = async (req, res) => {
     return res.status(200).json({
       success: true,
       data: user,
+    });
+  } catch (error) {
+    console.log('Error in getUserProfile:', error);
+
+    return res.status(500).json({
+      success: false,
+      message: 'Server error',
+      error: error.message,
+    });
+  }
+};
+
+const getAllUsers = async (req, res) => {
+  try {
+    const cachedKey = `user:all`;
+    const cachedUsers = req.redisClient ? await req.redisClient.get(cachedKey) : null;
+
+    if (cachedUsers) {
+      console.log('Users found in cache');
+      return res.status(200).json({
+        success: true,
+        data: JSON.parse(cachedUsers),
+      });
+    }
+
+    const users = await User.find({}).select('-password -refreshToken').populate({
+      path: 'projects.project',
+      populate: {
+        path: 'user',
+        select: '-password -refreshToken'
+      }
+    }).populate({
+      path: 'projects.project',
+      populate: {
+        path: 'service',
+        select: 'name'
+      }
+    }).populate({
+      path: 'applications',
+      populate: {
+        path: 'project',
+        populate: {
+          path: 'user',
+          select: '-password -refreshToken'
+        }
+      }
+    }).populate({
+      path: 'savedProjects',
+      populate: {
+        path: 'user',
+        select: '-password -refreshToken'
+      }
+    }).populate({
+      path: 'savedProjects',
+      populate: {
+        path: 'service',
+        select: 'name'
+      }
+    }).exec();
+
+    if (!users) {
+      return res.status(404).json({
+        success: false,
+        message: 'Users not found',
+      });
+    }
+
+    if (req.redisClient) {
+      await req.redisClient.set(cachedKey, JSON.stringify(users), 'EX', 3600);
+    }
+
+    return res.status(200).json({
+      success: true,
+      data: users,
     });
   } catch (error) {
     console.log('Error in getUserProfile:', error);
@@ -456,6 +542,7 @@ module.exports = {
   registerUser,
   loginUser,
   getUserProfile,
+  getAllUsers,
   changePassword,
   forgotPassword,
   resetPassword,

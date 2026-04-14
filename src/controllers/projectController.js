@@ -1,5 +1,6 @@
 const Project = require('../models/Project');
 const Service = require('../models/Service');
+const User = require('../models/User');
 const { uploadToCloudinary } = require('../utils/cloudinaryHelper');
 const { invalidateCache } = require('../utils/validation');
 
@@ -219,11 +220,20 @@ const updateProject = async (req, res) => {
       image,
     } = req.body;
 
+    const existingService = await Service.findOne({ name: service.toUpperCase() });
+
+    if (!existingService) {
+      return res.status(404).json({
+        success: false,
+        message: 'Service not found',
+      });
+    }
+
     project.title = title || project.title;
     project.description = description || project.description;
     project.price = price || project.price;
-    project.service = service || project.service;
-    project.level = level || project.level;
+    project.service = existingService._id || project.service;
+    project.level = level?.toLowerCase() || project.level;
     project.duration = duration || project.duration;
     project.location = location || project.location;
     project.skills = skills || project.skills;
@@ -294,10 +304,90 @@ const deleteProject = async (req, res) => {
   }
 };
 
+const saveProject = async(req, res)=>{
+  try {
+    const project = await Project.findById(req.params.id);
+
+    if (!project) {
+      return res.status(404).json({
+        success: false,
+        message: 'Project not found',
+      });
+    }
+
+    const user = await User.findById(req.user._id)
+    if(!user){
+      return res.status(404).json({
+        success: false,
+        message: 'user not found'
+      })
+    }
+
+    user.savedProjects.push(project._id)
+    await user.save()
+
+    await invalidateCache(req.redisClient, `user:${user._id}`);
+
+    return res.status(200).json({
+      success: true,
+      message: 'project saved successfully'
+    })
+  } catch (error) {
+     console.log('Error Saving Project:', error);
+
+    return res.status(500).json({
+      success: false,
+      message: 'Server error',
+      error: error.message,
+    });
+  }
+}
+
+const removeSavedProject = async(req, res)=>{
+  try {
+    const project = await Project.findById(req.params.id);
+
+    if (!project) {
+      return res.status(404).json({
+        success: false,
+        message: 'Project not found',
+      });
+    }
+
+    const user = await User.findById(req.user._id)
+    if(!user){
+      return res.status(404).json({
+        success: false,
+        message: 'user not found'
+      })
+    }
+
+    user.savedProjects = user.savedProjects.filter(id => id.toString() !== project._id.toString())
+    await user.save()
+
+    await invalidateCache(req.redisClient, `user:${user._id}`);
+
+    return res.status(200).json({
+      success: true,
+      message: 'project removed from saved successfully'
+    })
+  } catch (error) {
+     console.log('Error Removing Saved Project:', error);
+
+    return res.status(500).json({
+      success: false,
+      message: 'Server error',
+      error: error.message,
+    });
+  }
+}
+
 module.exports = {
   createProject,
   getProjects,
   getProject,
   updateProject,
   deleteProject,
+  saveProject,
+  removeSavedProject
 };

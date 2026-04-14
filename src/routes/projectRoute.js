@@ -7,6 +7,8 @@ const {
   getProject,
   updateProject,
   deleteProject,
+  saveProject,
+  removeSavedProject,
 } = require('../controllers/projectController');
 
 const { protect, employerOnly } = require('../middlewares/authMiddleware');
@@ -16,6 +18,8 @@ const { upload } = require('../utils/cloudinaryHelper');
 router.post('/', protect, employerOnly, upload, createProject);
 router.put('/:id', protect, employerOnly, updateProject);
 router.delete('/:id', protect, employerOnly, deleteProject);
+router.put('/save/:id', protect, saveProject);
+router.delete('/save/:id', protect, removeSavedProject);
 
 // Public
 router.get('/', getProjects);
