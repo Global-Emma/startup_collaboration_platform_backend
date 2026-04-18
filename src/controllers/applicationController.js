@@ -3,6 +3,8 @@ const Project = require('../models/Project');
 const User = require('../models/User');
 const { uploadToCloudinary } = require('../utils/cloudinaryHelper');
 const { invalidateCache } = require('../utils/validation');
+const { createNotification } = require('./notificationController');
+const { emitNotification } = require('../utils/notificationService');
 
 
 // =======================
@@ -76,6 +78,24 @@ const applyToProject = async (req, res) => {
     await invalidateCache(req.redisClient, 'projects:all');
 
     await invalidateCache(req.redisClient, `user:${user._id}`);
+
+    // Create notification for project owner
+    await createNotification(
+      existingProject.user,
+      'application_submitted',
+      'New Application',
+      `${user.username} applied to your project "${existingProject.title}"`,
+      application._id,
+      req.redisClient
+    );
+
+    // Emit notification to project owner
+    emitNotification(existingProject.user, {
+      type: 'application_submitted',
+      title: 'New Application',
+      message: `${user.username} applied to your project "${existingProject.title}"`,
+      relatedId: application._id,
+    });
 
     return res.status(201).json({
       success: true,
@@ -193,6 +213,23 @@ const acceptApplication = async (req, res) => {
 
     await invalidateCache(req.redisClient, `user:${applicant._id}`);
 
+    // Create notification for applicant
+    await createNotification(
+      applicant._id,
+      'application_accepted',
+      'Application Accepted',
+      `Your application for "${application.project.title}" has been accepted!`,
+      application._id,
+      req.redisClient
+    );
+
+    // Emit notification to applicant
+    emitNotification(applicant._id, {
+      type: 'application_accepted',
+      title: 'Application Accepted',
+      message: `Your application for "${application.project.title}" has been accepted!`,
+      relatedId: application._id,
+    });
 
     return res.status(200).json({
       success: true,
@@ -237,6 +274,26 @@ const rejectApplication = async (req, res) => {
 
     application.status = 'rejected';
     await application.save();
+
+    const applicant = await User.findById(application.applicant);
+
+    // Create notification for applicant
+    await createNotification(
+      applicant._id,
+      'application_rejected',
+      'Application Rejected',
+      `Your application for "${application.project.title}" has been rejected.`,
+      application._id,
+      req.redisClient
+    );
+
+    // Emit notification to applicant
+    emitNotification(applicant._id, {
+      type: 'application_rejected',
+      title: 'Application Rejected',
+      message: `Your application for "${application.project.title}" has been rejected.`,
+      relatedId: application._id,
+    });
 
     return res.status(200).json({
       success: true,

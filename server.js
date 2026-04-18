@@ -4,13 +4,15 @@ const cors = require('cors');
 const helmet = require('helmet');
 const http = require('http')
 const connectDB = require('./src/config/db');
-const startSocket = require('./src/sockets/chatSocket');
 const cookieParser = require('cookie-parser');
 const Redis = require('ioredis')
 const authRoutes = require('./src/routes/authRoute')
 const serviceRoutes = require('./src/routes/serviceRoute');
 const projectRoutes = require('./src/routes/projectRoute');
 const applicationRoutes = require('./src/routes/applicationRoute');
+const messageRoutes = require('./src/routes/messageRoute');
+const notificationRoutes = require('./src/routes/notificationRoute');
+const initSocket = require('./src/sockets/chatSocket');
 
 
 const app = express();
@@ -52,6 +54,14 @@ app.use('/api/apply', (req, res, next)=>{
   req.redisClient = redisClient;
   next();
 }, applicationRoutes);
+app.use('/api/chat', (req, res, next)=>{
+  req.redisClient = redisClient;
+  next();
+}, messageRoutes);
+app.use('/api/notifications', (req, res, next)=>{
+  req.redisClient = redisClient;
+  next();
+}, notificationRoutes);
 
 // Error handling middleware
 app.use((err, req, res, next) => {
@@ -65,10 +75,10 @@ app.use((err, req, res, next) => {
 // Create Server
 const server = http.createServer(app);
 
-startSocket(server);
+initSocket(server, redisClient);
 
 const PORT = process.env.PORT || 3000;
 
-app.listen(PORT, () => {
+server.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
