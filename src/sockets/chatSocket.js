@@ -21,8 +21,6 @@ const initSocket = (server, redisClient) => {
     try {
       const token = socket.handshake.auth.token;
 
-      console.log('Socket Auth Token:', token);
-
       if (!token) {
         return next(new Error("Unauthorized"));
       }
