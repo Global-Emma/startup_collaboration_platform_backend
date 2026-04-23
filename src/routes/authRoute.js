@@ -11,6 +11,7 @@ const {
   refreshToken,
   userLogout,
   getAllUsers,
+  editUserProfile,
 } = require('../controllers/authController');
 
 const { protect } = require('../middlewares/authMiddleware');
@@ -21,6 +22,7 @@ router.post('/login', loginUser);
 router.get('/profile', protect, getUserProfile);
 router.get('/users', getAllUsers);
 router.put('/change-password', protect, changePassword);
+router.put('/update-profile', protect, editUserProfile);
 
 router.post('/forgot-password', forgotPassword);
 router.put('/reset-password/:token', resetPassword);

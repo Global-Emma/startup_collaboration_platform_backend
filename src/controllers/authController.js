@@ -491,6 +491,83 @@ const refreshToken = async (req, res) => {
   }
 };
 
+// ==========================
+// EDIT USER PROFILE
+// ==========================
+const editUserProfile = async (req, res) => {
+  try {
+    const {
+      username,
+      firstname,
+      lastname,
+      phone,
+      bio,
+      skills,
+      avatar,
+    } = req.body;
+
+    const user = await User.findById(req.user._id);
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found',
+      });
+    }
+
+    // Check username conflict
+    if (username && username !== user.username) {
+      const usernameExists = await User.findOne({ username });
+
+      if (usernameExists) {
+        return res.status(400).json({
+          success: false,
+          message: 'Username already taken',
+        });
+      }
+
+      user.username = username;
+    }
+
+    // Update fields
+    user.firstname = firstname || user.firstname;
+    user.lastname = lastname || user.lastname;
+    user.phone = phone || user.phone;
+    user.bio = bio || user.bio;
+    user.skills = skills || user.skills;
+    user.avatar = avatar || user.avatar;
+
+    const updatedUser = await user.save();
+
+    await invalidateCache(req.redisClient, `user:${user._id}`);
+
+    return res.status(200).json({
+      success: true,
+      message: 'Profile updated successfully',
+      data: {
+        _id: updatedUser._id,
+        username: updatedUser.username,
+        firstname: updatedUser.firstname,
+        lastname: updatedUser.lastname,
+        email: updatedUser.email,
+        phone: updatedUser.phone,
+        bio: updatedUser.bio,
+        skills: updatedUser.skills,
+        avatar: updatedUser.avatar,
+        role: updatedUser.role,
+      },
+    });
+  } catch (error) {
+    console.log('Error updating profile:', error);
+
+    return res.status(500).json({
+      success: false,
+      message: 'Server error',
+      error: error.message,
+    });
+  }
+};
+
 const userLogout = async(req, res)=> {
   try {
     const token = req.cookies.refreshToken;
@@ -547,5 +624,6 @@ module.exports = {
   forgotPassword,
   resetPassword,
   refreshToken,
-  userLogout
+  userLogout,
+  editUserProfile,
 };
