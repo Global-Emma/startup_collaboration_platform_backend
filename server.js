@@ -30,7 +30,7 @@ redisClient.on('error', (error)=>{
 connectDB();
 
 app.use(cors({
-  origin: "https://freemp.vercel.app/",
+  origin: "https://freemp.vercel.app",
   credentials: true,
 }));
 app.use(helmet());
