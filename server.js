@@ -30,7 +30,7 @@ redisClient.on('error', (error)=>{
 connectDB();
 
 app.use(cors({
-  origin: "https://freempcollab-git-master-globals-projects-a7bf3531.vercel.app",
+  origin: "https://freemp.vercel.app/",
   credentials: true,
 }));
 app.use(helmet());
