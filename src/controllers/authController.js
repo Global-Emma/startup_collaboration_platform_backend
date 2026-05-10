@@ -570,7 +570,8 @@ const editUserProfile = async (req, res) => {
 
 const userLogout = async(req, res)=> {
   try {
-    const token = req.cookies.refreshToken;
+    const logUser = await User.findById(req.user._id)
+    const token = req.cookies.refreshToken || logUser.refreshToken;
 
     if (!token) {
       return res.status(400).json({
