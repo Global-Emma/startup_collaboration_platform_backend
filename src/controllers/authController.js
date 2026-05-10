@@ -599,6 +599,9 @@ const userLogout = async(req, res)=> {
 
     user.refreshToken = ''
     await user.save()
+
+    await invalidateCache(req.redisClient, `user:${user._id}`);
+
     res.status(200).json({
       success: true,
       message: 'User Logged Out Successfully'
