@@ -10,7 +10,7 @@ const { setIo, emitNotification } = require("../utils/notificationService");
 const initSocket = (server, redisClient) => {
   const io = new Server(server, {
     cors: {
-      origin: "https://freempcollab-git-master-globals-projects-a7bf3531.vercel.app",
+      origin: "https://freemp.vercel.app",
       credentials: true,
     },
   });
